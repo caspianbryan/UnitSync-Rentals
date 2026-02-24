@@ -168,7 +168,6 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_tenant_month", ["tenantId", "month"])
     .index("by_landlord_status", ["landlordId", "status"]),
-
 });
 
 

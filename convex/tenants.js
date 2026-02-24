@@ -38,6 +38,7 @@ async function enrichTenantWithRelations(ctx, tenant) {
   };
 }
 
+
 /* =====================================================
    ADMIN MUTATIONS
 ===================================================== */
@@ -75,7 +76,6 @@ export const createTenant = mutation({
 });
 
 
-
 /**
  * ADMIN: Vacate tenant (detach from unit)
  */
@@ -98,6 +98,7 @@ export const vacateTenant = mutation({
     });
   },
 });
+
 
 /* =====================================================
    ADMIN QUERIES
