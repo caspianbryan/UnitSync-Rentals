@@ -84,10 +84,41 @@ export default function TenantDashboardPage() {
 
 
   /* guards */
-  if (!convexUser) return <Loader label="Loading…" />;
-  if (!convexUser.isTenant) return <ErrorState title="Access Denied" body="You don't have tenant access." />;
-  if (!tenant) return <ErrorState title="Profile Not Found" body={`Your landlord needs to register: ${user?.emailAddresses?.[0]?.emailAddress}`} />;
-  if (!data) return <Loader label="Loading dashboard…" />;
+  // if (!convexUser) return <Loader label="Loading…" />;
+  // if (!convexUser.isTenant) return <ErrorState title="Access Denied" body="You don't have tenant access." />;
+  // if (!tenant) return <ErrorState title="Profile Not Found" body={`Your landlord needs to register: ${user?.emailAddresses?.[0]?.emailAddress}`} />;
+  // if (!data) return <Loader label="Loading dashboard…" />;
+
+  /* loading states */
+if (convexUser === undefined) {
+  return <Loader label="Loading user…" />;
+}
+
+if (tenant === undefined) {
+  return <Loader label="Loading profile…" />;
+}
+
+if (data === undefined) {
+  return <Loader label="Loading dashboard…" />;
+}
+
+/* access control */
+if (!convexUser) {
+  return <ErrorState title="User Not Found" body="Contact support." />;
+}
+
+if (!convexUser.isTenant) {
+  return <ErrorState title="Access Denied" body="You don't have tenant access." />;
+}
+
+if (!tenant) {
+  return (
+    <ErrorState
+      title="Profile Not Found"
+      body={`Your landlord needs to register: ${user?.emailAddresses?.[0]?.emailAddress}`}
+    />
+  );
+}
 
   const { tenant: T, unit, property, maintenanceCount, openIssues } = data;
 

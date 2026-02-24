@@ -9,7 +9,7 @@ import { Building2, Home, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function OnboardingPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const [isSelecting, setIsSelecting] = useState(false);
 
@@ -18,18 +18,24 @@ export default function OnboardingPage() {
     user ? { clerkUserId: user.id } : "skip"
   );
 
+  if (!isLoaded || dbUser === undefined) {
+  return <LoadingScreen />
+}
+
   const completeOnboarding = useMutation(api.users.completeOnboarding);
 
   // Handle redirects in useEffect to avoid rendering issues
   useEffect(() => {
-    if (!dbUser) return;
+  if (dbUser === undefined) return; // still loading
 
-    if (dbUser.isAdmin) {
-      router.push("/dashboard");
-    } else if (dbUser.isTenant) {
-      router.push("/tenant");
-    }
-  }, [dbUser, router]);
+  if (!dbUser) return; // user not created yet
+
+  if (dbUser.isAdmin) {
+    router.replace("/dashboard");
+  } else if (dbUser.isTenant) {
+    router.replace("/tenant");
+  }
+}, [dbUser, router]);
 
   // Show loading state
   if (!user || !dbUser) {

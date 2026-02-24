@@ -3,31 +3,28 @@ import { NextResponse } from "next/server";
 
 export default clerkMiddleware((auth, req) => {
   const { userId } = auth();
+  const { pathname } = req.nextUrl;
 
-  const url = req.nextUrl.pathname;
+  // Public routes
+  const isPublicRoute =
+    pathname === "/" ||
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up") ||
+    pathname.startsWith("/pricing");
 
-  // 🟢 Public routes
-  const isPublic =
-    url === "/" ||
-    url.startsWith("/sign-in") ||
-    url.startsWith("/sign-up") ||
-    url.startsWith("/pricing");
-
-  if (isPublic) {
+  if (isPublicRoute) {
     return NextResponse.next();
   }
 
-  // 🔒 Protected app routes
+  // If not signed in → redirect to sign in
   if (!userId) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  // ✅ Authenticated, allow through
+  // Signed in → allow
   return NextResponse.next();
 });
 
 export const config = {
-  matcher: [
-    "/((?!_next|.*\\..*).*)",
-  ],
+  matcher: ["/((?!_next|.*\\..*).*)"],
 };
