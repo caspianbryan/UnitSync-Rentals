@@ -2,15 +2,14 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import { Toaster } from "@/components/ui/sonner";
-import SyncUserToConvex from "./syncUser/page";
 import { ThemeProvider } from "next-themes";
-import AuthSync from "@/components/AuthSync";
+import { RedirectHandler } from "@/components/Authhandler/RedirectHandler";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "UnitSync - Premium Property Management",
-  description: "Enterprise property management platform for modern landlords and property managers",
+  title: "UnitSync",
+  description: "Premium Property Management",
 };
 
 export default function RootLayout({ children }) {
@@ -24,9 +23,9 @@ export default function RootLayout({ children }) {
           disableTransitionOnChange
         >
           <Providers>
-            <SyncUserToConvex />
-            <AuthSync />
-            {children}
+            <RedirectHandler>
+              {children}
+            </RedirectHandler>
             <Toaster position="top-right" />
           </Providers>
         </ThemeProvider>

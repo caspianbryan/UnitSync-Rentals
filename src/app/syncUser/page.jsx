@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -10,36 +10,45 @@ export default function SyncUserToConvex() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const pathname = usePathname();
+
   const syncUser = useMutation(api.users.syncUser);
+  const dbUser = useQuery(api.users.getByClerkId, user ? { clerkUserId: user.id } : undefined);
+  console.log('db user query ==', dbUser);
+  
 
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded) return;        // Wait for Clerk session
+    if (!user) return;            // Not signed in yet
+    if (pathname.startsWith("/sign-in")) return; // Prevent loop from sign-in
 
-    const sync = async () => {
+    const redirectFlow = async () => {
       try {
+        // Sync user in your DB
         await syncUser({
           clerkUserId: user.id,
           email: user.primaryEmailAddress?.emailAddress || "",
           name: user.fullName || undefined,
         });
 
-        // Only redirect to onboarding if:
-        // 1. User just signed in
-        // 2. Not already on onboarding, dashboard, or tenant pages
-        const protectedPaths = ['/onboarding', '/dashboard', '/tenant'];
-        const isOnProtectedPath = protectedPaths.some(path => pathname?.startsWith(path));
+        // If dbUser is not loaded yet, don't redirect
+        if (dbUser === undefined) return;
 
-        if (!isOnProtectedPath && pathname === '/') {
-          // Redirect new users to onboarding
-          router.push('/onboarding');
+        // Redirect logic
+        if (!dbUser) {
+          // First-time user: go to onboarding
+          router.replace("/onboarding");
+        } else if (dbUser.isAdmin) {
+          router.replace("/dashboard");
+        } else if (dbUser.isTenant) {
+          router.replace("/tenant");
         }
       } catch (error) {
         console.error("Error syncing user:", error);
       }
     };
 
-    sync();
-  }, [user, isLoaded, syncUser, router, pathname]);
+    redirectFlow();
+  }, [user, isLoaded, dbUser, syncUser, router, pathname]);
 
   return null;
 }

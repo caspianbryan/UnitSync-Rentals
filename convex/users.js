@@ -5,14 +5,43 @@ import { v } from "convex/values";
 export const getByClerkId = query({
   args: { clerkUserId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
+    try {
+      const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", args.clerkUserId))
       .first();
-    
-    return user;
+
+      return user;
+
+    } catch (error) {
+      console.error("Error fetching user by Clerk ID:", error);
+      return null;  
+    }
   },
 });
+
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    try {
+      const identity = await ctx.auth.getIdentity();
+
+      if (!identity) {
+        return null;
+      } 
+
+      const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.id))
+      .first();
+      return user ?? null;
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+      return null;
+    }
+  },
+});
+
 
 export const getUserByEmail = query({
   args: { email: v.string() },
@@ -58,39 +87,75 @@ export const syncUser = mutation({
   args: {
     clerkUserId: v.string(),
     email: v.string(),
-    name: v.optional(v.string()),
+    name: v.string(),
+    phone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Check if user already exists
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", args.clerkUserId))
-      .first();
+    try {
+      console.log("🔄 syncUser:", args.email);
+      
+      // Check if user exists
+      const existingUser = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+        .first();
 
-    if (existing) {
-      // Update existing user if needed
-      if (existing.email !== args.email || (args.name && existing.name !== args.name)) {
-        await ctx.db.patch(existing._id, {
-          email: args.email,
-          ...(args.name && { name: args.name }),
+      if (existingUser) {
+        console.log("✅ User exists, updating");
+        
+        // Update existing user
+        await ctx.db.patch(existingUser._id, {
+          name: args.name,
+          phone: args.phone,
+          lastLoginAt: Date.now(),
         });
+        
+        // Return updated user
+        const updatedUser = await ctx.db.get(existingUser._id);
+        return updatedUser;
       }
-      return existing._id;
+
+      console.log("🆕 Creating new user");
+      
+      // Create new user
+      const userId = await ctx.db.insert("users", {
+        clerkUserId: args.clerkUserId,
+        email: args.email,
+        name: args.name,
+        phone: args.phone,
+        role: undefined,
+        onboardingCompleted: false,
+        createdAt: Date.now(),
+        lastLoginAt: Date.now(),
+      });
+
+      console.log("📝 Creating onboarding record");
+      
+      // Create onboarding record
+      await ctx.db.insert("onboarding", {
+        userId,
+        clerkUserId: args.clerkUserId,
+        fullName: args.name,
+        phone: args.phone,
+        currentStep: 1,
+        completedSteps: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      // Return new user
+      const newUser = await ctx.db.get(userId);
+      console.log("✅ User created successfully");
+      
+      return newUser;
+      
+    } catch (error) {
+      console.error("❌ Error in syncUser:", error);
+      throw error;
     }
-
-    // Create new user
-    const userId = await ctx.db.insert("users", {
-      clerkUserId: args.clerkUserId,
-      email: args.email,
-      name: args.name || args.email.split("@")[0],
-      isAdmin: false,
-      isTenant: false,
-      createdAt: Date.now(),
-    });
-
-    return userId;
   },
 });
+
 
 export const switchRole = mutation({
   args: {
@@ -115,5 +180,27 @@ export const switchRole = mutation({
     }
 
     return { success: true, role };
+  },
+});
+
+// ────────────────────────────────────────────────────────────
+// USER MANAGEMENT
+// ────────────────────────────────────────────────────────────
+export const updateUser = mutation({
+  args: {
+    userId: v.id("users"),
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    avatar: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, ...updates } = args;
+    
+    await ctx.db.patch(userId, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+    
+    return userId;
   },
 });

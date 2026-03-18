@@ -6,7 +6,6 @@ import { v } from "convex/values";
    - NOT EXPORTED
    - SAFE FOR NULLS
 ===================================================== */
-
 async function fetchTenantById(ctx, tenantId) {
   const tenant = await ctx.db.get(tenantId);
   return tenant ?? null;
@@ -42,7 +41,6 @@ async function enrichTenantWithRelations(ctx, tenant) {
 /* =====================================================
    ADMIN MUTATIONS
 ===================================================== */
-
 /**
  * ADMIN: Create a tenant and assign to a unit
  */
@@ -103,7 +101,6 @@ export const vacateTenant = mutation({
 /* =====================================================
    ADMIN QUERIES
 ===================================================== */
-
 /**
  * ADMIN: Get all tenants (dashboard list)
  */
@@ -208,7 +205,6 @@ export const getTenant = query({
 /* =====================================================
    TENANT QUERIES
 ===================================================== */
-
 /**
  * TENANT: Lookup tenant by email (auth bridge)
  */

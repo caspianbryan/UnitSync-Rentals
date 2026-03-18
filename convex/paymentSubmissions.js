@@ -20,20 +20,20 @@ export const submitPaymentProof = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    
+
     // REMOVED: Check that blocked multiple submissions per month
     // Tenants can now submit multiple payment proofs for the same month
     // (e.g., partial payments, corrections, etc.)
-    
+
     const submissionId = await ctx.db.insert("paymentSubmissions", {
       ...args,
       status: "pending",
       submittedAt: now,
       createdAt: now,
     });
-    
+
     // TODO: Send notification to landlord
-    
+
     return { submissionId, success: true };
   },
 });
@@ -47,7 +47,7 @@ export const getTenantSubmissions = query({
       .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
       .order("desc")
       .collect();
-    
+
     return submissions;
   },
 });
@@ -61,7 +61,7 @@ export const cancelSubmission = mutation({
     if (submission.status !== "pending") {
       throw new Error("Can only cancel pending submissions");
     }
-    
+
     await ctx.db.delete(args.submissionId);
     return { success: true };
   },
@@ -80,7 +80,7 @@ export const getPendingSubmissions = query({
       )
       .order("desc")
       .collect();
-    
+
     // Enrich with tenant, unit, property data
     const enriched = await Promise.all(
       submissions.map(async (sub) => {
@@ -90,7 +90,7 @@ export const getPendingSubmissions = query({
         return { ...sub, tenant, unit, property };
       })
     );
-    
+
     return enriched;
   },
 });
@@ -103,7 +103,7 @@ export const getLandlordSubmissions = query({
   },
   handler: async (ctx, args) => {
     let submissions;
-    
+
     if (args.status) {
       submissions = await ctx.db
         .query("paymentSubmissions")
@@ -119,7 +119,7 @@ export const getLandlordSubmissions = query({
         .order("desc")
         .collect();
     }
-    
+
     // Enrich
     const enriched = await Promise.all(
       submissions.map(async (sub) => {
@@ -129,7 +129,7 @@ export const getLandlordSubmissions = query({
         return { ...sub, tenant, unit, property };
       })
     );
-    
+
     return enriched;
   },
 });
@@ -145,7 +145,7 @@ export const getAllPendingSubmissions = query({
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .order("desc")
       .collect();
-    
+
     // Enrich with tenant, unit, property data
     const enriched = await Promise.all(
       submissions.map(async (sub) => {
@@ -155,7 +155,7 @@ export const getAllPendingSubmissions = query({
         return { ...sub, tenant, unit, property };
       })
     );
-    
+
     return enriched;
   },
 });
@@ -167,7 +167,7 @@ export const getAllSubmissions = query({
   },
   handler: async (ctx, args) => {
     let submissions;
-    
+
     if (args.status) {
       submissions = await ctx.db
         .query("paymentSubmissions")
@@ -180,7 +180,7 @@ export const getAllSubmissions = query({
         .order("desc")
         .collect();
     }
-    
+
     // Enrich
     const enriched = await Promise.all(
       submissions.map(async (sub) => {
@@ -190,7 +190,7 @@ export const getAllSubmissions = query({
         return { ...sub, tenant, unit, property };
       })
     );
-    
+
     return enriched;
   },
 });
@@ -207,9 +207,9 @@ export const approveSubmission = mutation({
     if (submission.status !== "pending") {
       throw new Error("Submission already reviewed");
     }
-    
+
     const now = Date.now();
-    
+
     // Find or create ledger entry for this month
     let ledger = await ctx.db
       .query("rentLedger")
@@ -217,12 +217,12 @@ export const approveSubmission = mutation({
         q.eq("tenantId", submission.tenantId).eq("month", submission.month)
       )
       .first();
-    
+
     if (!ledger) {
       // Get unit to get rent amount
       const unit = await ctx.db.get(submission.unitId);
       if (!unit) throw new Error("Unit not found");
-      
+
       // Create ledger entry
       const ledgerId = await ctx.db.insert("rentLedger", {
         tenantId: submission.tenantId,
@@ -238,11 +238,12 @@ export const approveSubmission = mutation({
       });
       ledger = await ctx.db.get(ledgerId);
     }
-    
+
     // Create payment record
     const paymentId = await ctx.db.insert("payments", {
       tenantId: submission.tenantId,
       unitId: submission.unitId,
+      propertyId: submission.propertyId, // ✅ ADD THIS
       landlordId: submission.landlordId,
       ledgerId: ledger._id,
       amount: submission.amount,
@@ -254,7 +255,7 @@ export const approveSubmission = mutation({
       recordedBy: args.reviewedBy,
       createdAt: now,
     });
-    
+
     // Update ledger amounts
     const newAmountPaid = ledger.amountPaid + submission.amount;
     let newStatus = "unpaid";
@@ -263,13 +264,13 @@ export const approveSubmission = mutation({
     } else if (newAmountPaid > 0) {
       newStatus = "partial";
     }
-    
+
     await ctx.db.patch(ledger._id, {
       amountPaid: newAmountPaid,
       status: newStatus,
       updatedAt: now,
     });
-    
+
     // Update submission
     await ctx.db.patch(args.submissionId, {
       status: "approved",
@@ -277,7 +278,7 @@ export const approveSubmission = mutation({
       reviewedBy: args.reviewedBy,
       paymentId,
     });
-    
+
     return { success: true, paymentId };
   },
 });
@@ -295,14 +296,14 @@ export const rejectSubmission = mutation({
     if (submission.status !== "pending") {
       throw new Error("Submission already reviewed");
     }
-    
+
     await ctx.db.patch(args.submissionId, {
       status: "rejected",
       reviewedAt: Date.now(),
       reviewedBy: args.reviewedBy,
       rejectionReason: args.reason,
     });
-    
+
     return { success: true };
   },
 });

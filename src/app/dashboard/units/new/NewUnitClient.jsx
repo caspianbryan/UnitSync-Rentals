@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useUser } from "@clerk/nextjs";
 
 export default function NewUnit() {
   const searchParams = useSearchParams();
@@ -34,6 +35,14 @@ export default function NewUnit() {
   );
 
   const createUnit = useMutation(api.units.createUnit);
+
+  const { user } = useUser();
+  const convexUser = useQuery(
+    api.users.getUserByEmail,
+    user?.emailAddresses?.[0]?.emailAddress
+      ? { email: user.emailAddresses[0].emailAddress }
+      : "skip"
+  );
 
   if (!propertyId) {
     return (
@@ -67,6 +76,18 @@ export default function NewUnit() {
     );
   }
 
+  // ✅ Just show a loader while convexUser is being fetched
+  if (!convexUser) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-200 dark:border-emerald-800 border-t-emerald-600 dark:border-t-emerald-400 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading user…</p>
+        </div>
+      </div>
+    );
+  }
+
   const submit = async (e) => {
     e.preventDefault();
 
@@ -85,6 +106,7 @@ export default function NewUnit() {
     try {
       await createUnit({
         propertyId,
+        landlordId: convexUser._id,  // ✅ add this
         unitNumber: unitNumber.trim(),
         rentAmount: Number(rentAmount),
       });

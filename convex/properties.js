@@ -14,8 +14,11 @@ export const createProperty = mutation({
     name: v.string(),
     location: v.string(),
   },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("properties", args);
+   handler: async (ctx, args) => {
+    return await ctx.db.insert("properties", {
+      ...args,
+      createdAt: Date.now(), 
+    });
   },
 });
 

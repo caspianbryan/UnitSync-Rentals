@@ -4,11 +4,16 @@ import { v } from "convex/values";
 export const createUnit = mutation({
   args: {
     propertyId: v.id("properties"),
+    landlordId: v.id("users"),
     unitNumber: v.string(),
     rentAmount: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("units", args);
+    return await ctx.db.insert("units", {
+      ...args,
+      status: "vacant",
+      createdAt: Date.now(),
+    });
   },
 });
 
@@ -68,7 +73,6 @@ export const getUnitWithProperty = query({
   },
 });
 
-// NEW QUERY: Get all units for a landlord across all their properties
 export const getAllLandlordUnits = query({
   args: { landlordId: v.id("users") },
   handler: async (ctx, args) => {

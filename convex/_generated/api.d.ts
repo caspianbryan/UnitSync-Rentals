@@ -9,10 +9,11 @@
  */
 
 import type * as maintenance from "../maintenance.js";
-import type * as mutations_users from "../mutations/users.js";
+import type * as onboarding from "../onboarding.js";
 import type * as paymentSubmissions from "../paymentSubmissions.js";
 import type * as payments from "../payments.js";
 import type * as properties from "../properties.js";
+import type * as tenantInvites from "../tenantInvites.js";
 import type * as tenants from "../tenants.js";
 import type * as units from "../units.js";
 import type * as users from "../users.js";
@@ -25,10 +26,11 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   maintenance: typeof maintenance;
-  "mutations/users": typeof mutations_users;
+  onboarding: typeof onboarding;
   paymentSubmissions: typeof paymentSubmissions;
   payments: typeof payments;
   properties: typeof properties;
+  tenantInvites: typeof tenantInvites;
   tenants: typeof tenants;
   units: typeof units;
   users: typeof users;
